@@ -10,7 +10,7 @@
 
 **Master your coding speed with AI-generated practice sessions**
 
-[🚀 **Launch App**](https://naseem-2917.github.io/ai-code-typer/) • [📖 Documentation](#-features) • [🐛 Report Bug](https://github.com/naseem-2917/ai-code-typer/issues)
+[🚀 **Launch App**](https://naseem2917.github.io/ai-code-typer/) • [📖 Documentation](#-features) • [🐛 Report Bug](https://github.com/naseem2917/ai-code-typer/issues)
 
 </div>
 
@@ -98,7 +98,7 @@ Recharts
 
 ```bash
 # Clone the repository
-git clone https://github.com/naseem-2917/ai-code-typer.git
+git clone https://github.com/naseem2917/ai-code-typer.git
 cd ai-code-typer
 
 # Install dependencies
@@ -180,7 +180,7 @@ This project is open source and available under the [MIT License](LICENSE).
 
 <div align="center">
 
-Made with ❤️ by [Naseem Khan](https://github.com/naseem-2917)
+Made with ❤️ by [Naseem Khan](https://github.com/naseem2917)
 
 ⭐ **Star this repo if you find it useful!** ⭐
 

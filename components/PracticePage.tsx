@@ -177,8 +177,10 @@ const PracticePage: React.FC = () => {
     }, [requestFocusOnCode]);
 
     const handleSetupNew = useCallback(() => {
+        setIsResultsModalOpen(false);
+        setIsTargetedResultsModalOpen(false);
         openSetupModal();
-    }, [openSetupModal]);
+    }, [openSetupModal, setIsResultsModalOpen, setIsTargetedResultsModalOpen]);
 
     const handleEndSession = useCallback(() => {
         console.log("handleEndSession triggered");

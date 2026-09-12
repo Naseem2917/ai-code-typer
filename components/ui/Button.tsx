@@ -19,6 +19,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({
   size = 'md',
   accessKeyChar,
   accessKeyLabel,
+  isLoading,
   accessKey, // Destructure accessKey to prevent passing it to DOM element
   ...props
 }, ref) => {

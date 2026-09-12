@@ -1,6 +1,6 @@
 import { Language, SnippetLength, SnippetLevel, ContentType } from '../types';
 
-const API_URL = "https://ai-code-typer-proxy.khannaseem1704.workers.dev";
+const API_URL = "https://ai-code-typer-proxy.naseem2917.workers.dev";
 
 const levelMap = {
   easy: 'basic syntax and concepts, like variable declaration and simple loops',

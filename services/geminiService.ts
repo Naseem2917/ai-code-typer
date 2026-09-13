@@ -14,128 +14,72 @@ const lengthMap: Record<SnippetLength, string> = {
   long: '25-30 lines',
 };
 
-// Internal helper with RETRY LOGIC (Updated for Fetch API)
-const generateSnippet = async (prompt: string, customSystemInstruction?: string): Promise<string> => {
-  const maxRetries = 3;
-  let lastError: Error | null = null;
+type GenerationMode = 'fast' | 'medium' | 'hard';
 
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const defaultSystemInstruction = `You are a code generation engine for a typing practice app.
+// Internal helper for worker call with fast failover and backward compatibility
+const generateSnippet = async (
+  prompt: string,
+  customSystemInstruction?: string,
+  mode: GenerationMode = 'medium'
+): Promise<string> => {
+  const defaultSystemInstruction = `You are a code generation engine for a typing practice app.
 Your task is to provide a code snippet based on the user's request.
 The snippet MUST be clean, raw code.
 ABSOLUTELY NO explanations, comments, markdown backticks(\`\`\`), or any text other than the code itself.
 The code must be syntactically correct for the requested language.`;
 
-      // 1. Call Cloudflare Worker instead of Google SDK
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prompt: prompt,
-          systemInstruction: customSystemInstruction || defaultSystemInstruction
-        }),
-      });
+  try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        prompt: prompt,
+        systemInstruction: customSystemInstruction || defaultSystemInstruction,
+        mode: mode,
+      }),
+    });
 
-      // Handle 429 (Too Many Requests) specifically for retry logic
+    if (!response.ok) {
+      let errorDetails = response.statusText;
+      try {
+        const errorData = await response.json();
+        if (errorData?.error) {
+          errorDetails = typeof errorData.error === 'string' ? errorData.error : JSON.stringify(errorData.error);
+        }
+      } catch {
+        const errorText = await response.text().catch(() => '');
+        if (errorText) errorDetails = `${response.status} - ${errorText}`;
+      }
+
       if (response.status === 429) {
-        throw new Error('429: Too Many Requests');
+        throw new Error("AI service is busy (Rate Limit). Please try again shortly.");
       }
-
-      if (!response.ok) {
-        let errorDetails = response.statusText;
-        let isQuotaError = false;
-        try {
-          const errorData = await response.json();
-          if (errorData?.error) {
-            errorDetails = JSON.stringify(errorData.error);
-            // Check for Google's specific error structure
-            if (
-              errorData.error.code === 429 ||
-              errorData.error.status === 'RESOURCE_EXHAUSTED' ||
-              errorData.error.message?.toLowerCase().includes('quota')
-            ) {
-              isQuotaError = true;
-            }
-          }
-        } catch (e) {
-          // Fallback to text if JSON parse fails
-          try {
-            const errorText = await response.text();
-            if (errorText) {
-              errorDetails = `${response.status} - ${errorText}`;
-              if (errorText.toLowerCase().includes('quota')) isQuotaError = true;
-            }
-          } catch (textError) {
-            // Ignore
-          }
-        }
-
-        if (isQuotaError) {
-          throw new Error('Quota Exceeded: The AI service daily limit has been reached.');
-        }
-
-        // Check for 503 Service Unavailable / Overloaded
-        if (response.status === 503 || errorDetails.includes('"status":"UNAVAILABLE"') || errorDetails.includes('overloaded')) {
-          throw new Error('AI Service Overloaded: The model is currently overloaded. Please try again in a few moments or use the "Upload Text" option instead.');
-        }
-
-        throw new Error(`Worker Error: ${errorDetails}`);
+      if (response.status === 503 || errorDetails.toLowerCase().includes("overloaded")) {
+        throw new Error("AI models are currently overloaded. Please try again in a moment.");
       }
-
-      const data = await response.json();
-
-      // 2. Parse the response (Worker returns raw Google structure)
-      // Path: data.candidates[0].content.parts[0].text
-      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (!rawText) {
-        throw new Error(data.error || "The AI returned an empty snippet. Please try again.");
-      }
-
-      // Clean up potential markdown code fences
-      const cleanedCode = rawText.replace(/^```(?:\w+\n)?/, '').replace(/```$/, '').trim();
-
-      return cleanedCode;
-
-    } catch (error) {
-      lastError = error as Error;
-
-      // Retry logic for 429 and 503 errors (but NOT for Quota Exceeded which won't resolve quickly)
-      const isRateLimit = error instanceof Error && error.message.includes('429');
-      const isOverloaded = error instanceof Error && error.message.includes('AI Service Overloaded');
-      const isQuota = error instanceof Error && error.message.includes('Quota Exceeded');
-
-      if ((isRateLimit || isOverloaded) && !isQuota) {
-        if (attempt < maxRetries) {
-          const delay = Math.pow(2, attempt) * 1000;
-          await new Promise(resolve => setTimeout(resolve, delay));
-          continue;
-        }
-      }
-      // Do not retry on other errors (like Quota Exceeded)
-      break;
+      throw new Error(`AI Service Error: ${errorDetails}`);
     }
+
+    const data = await response.json();
+
+    // 1. Modern response: data.text
+    // 2. Backward-compatible fallback: candidates[0].content.parts[0].text
+    const rawText = data?.text || data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!rawText) {
+      throw new Error(data?.error || "The AI returned an empty snippet. Please try again.");
+    }
+
+    // Clean up potential markdown code fences
+    const cleanedCode = rawText.replace(/^```(?:\w+\n)?/, '').replace(/```$/, '').trim();
+
+    return cleanedCode;
+  } catch (error) {
+    console.error("Error generating snippet:", error);
+    throw error;
   }
-
-  console.error("Error generating snippet:", lastError);
-
-  if (lastError) {
-    if (lastError.message.includes('Quota Exceeded')) {
-      throw lastError; // Propagate the specific message
-    }
-    if (lastError.message.includes('AI Service Overloaded')) {
-      throw new Error("AI model is overloaded. Try Upload Text option or wait a moment and retry.");
-    }
-    if (lastError.message.includes('429')) {
-      throw new Error("AI service is busy. Please try again shortly.");
-    }
-    throw lastError;
-  }
-
-  throw new Error("Unknown error generating snippet.");
 };
 
 // Exported: Code Practice
@@ -157,7 +101,8 @@ The difficulty level should be ${levelMap[level]}.`;
   5. CRITICAL: INDENTATION MUST USE TAB CHARACTERS (\t). NEVER USE SPACES FOR INDENTATION.
   6. Do not convert tabs to spaces. Use actual tab characters.`;
 
-  return generateSnippet(prompt, systemInstruction);
+  const mode: GenerationMode = level === 'hard' ? 'hard' : 'medium';
+  return generateSnippet(prompt, systemInstruction, mode);
 };
 
 // Exported: Targeted Practice
@@ -194,7 +139,7 @@ export const generateTargetedCodeSnippet = async (
   
   Generate the snippet now.`;
 
-  return generateSnippet(prompt);
+  return generateSnippet(prompt, undefined, 'fast');
 };
 
 // Exported: General Practice
@@ -278,7 +223,7 @@ ${difficultyInstruction}`;
   5. Format naturally with line breaks every 8-12 words.
   6. NO markdown, headers, or backticks.`;
 
-  return generateSnippet(prompt, systemInstruction);
+  return generateSnippet(prompt, systemInstruction, 'fast');
 };
 
 // Exported: Error Practice (Fixed Logic)
@@ -355,5 +300,5 @@ export const generateErrorPracticeSnippet = async (
   Output MUST be plain text prose.
   `;
 
-  return generateSnippet(prompt, systemInstruction);
+  return generateSnippet(prompt, systemInstruction, 'fast');
 };

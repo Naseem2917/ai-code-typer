@@ -1,5 +1,54 @@
-.env.local
-node_modules
-dist
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Production Build Outputs (Built on GitHub Actions CI for GitHub Pages)
+dist/
+dist-ssr/
+build/
+*.local
+
+# Environment Variables & Secrets (CRITICAL: Never commit API keys or secrets)
+.env
+.env.*
+!.env.example
+.dev.vars
+
+# Cloudflare Worker / Wrangler Build Cache
+.wrangler/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor & IDE Directories
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS Generated Files
 .DS_Store
-".env.local" 
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# TypeScript Cache
+*.tsbuildinfo
+
+# Temporary & Scratch Scripts
+*.py
+fix_app_context.js
+__pycache__/
+*.pyc

@@ -1,0 +1,6 @@
+name = "ai-code-typer-proxy"
+main = "index.ts"
+compatibility_date = "2024-01-01"
+
+# Bind GEMINI_API_KEY as a secret in Cloudflare:
+# Run: npx wrangler secret put GEMINI_API_KEY

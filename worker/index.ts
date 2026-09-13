@@ -202,10 +202,13 @@ export default {
 				)
 			}
 
-			const apiKey = env.GEMINI_API_KEY
+			// Check all common variable names in case it was saved as API_KEY or GOOGLE_API_KEY
+			const envAny = env as unknown as Record<string, string | undefined>
+			const apiKey = env.GEMINI_API_KEY || envAny.API_KEY || envAny.GOOGLE_API_KEY || envAny.GEMINI_KEY
+
 			if (!apiKey) {
 				return Response.json(
-					{ error: 'Configuration Error: Missing GEMINI_API_KEY in worker environment' },
+					{ error: 'Configuration Error: Missing GEMINI_API_KEY in worker environment. Please add GEMINI_API_KEY in Cloudflare Worker Settings > Variables.' },
 					{ status: 500, headers: CORS_HEADERS },
 				)
 			}

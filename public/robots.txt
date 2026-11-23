@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://naseem2917.github.io/ai-code-typer/sitemap.xml
